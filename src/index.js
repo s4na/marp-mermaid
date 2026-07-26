@@ -45,7 +45,7 @@ export async function transformMermaidBlocks(markdown, options = {}) {
     result += markdown.slice(cursor, block.start);
     const svg = await render(block.diagram.trim(), options);
     const encoded = Buffer.from(svg).toString("base64");
-    result += `${block.indent}![Mermaid diagram](data:image/svg+xml;base64,${encoded})${block.lineEnding}`;
+    result += `${block.prefix}${block.indent}![Mermaid diagram](data:image/svg+xml;base64,${encoded})${block.lineEnding}`;
     cursor = block.end;
   }
 
@@ -68,21 +68,28 @@ function findMermaidBlocks(markdown) {
 
     const start = offset;
     const contentStart = start + line.length;
-    let contentEnd = markdown.length;
     let end = markdown.length;
     let lineEnding = "";
     let closingIndex = lines.length;
     let closingOffset = contentStart;
+    const contentLines = [];
 
     for (let candidate = index + 1; candidate < lines.length; candidate += 1) {
       const candidateLine = lines[candidate];
-      if (isClosingFence(candidateLine, opening.marker)) {
-        contentEnd = closingOffset;
+      const containerContent = stripBlockQuote(
+        candidateLine,
+        opening.quoteDepth,
+      );
+      if (
+        containerContent !== null &&
+        isClosingFence(containerContent, opening.marker)
+      ) {
         end = closingOffset + candidateLine.length;
         lineEnding = candidateLine.match(/(\r\n|\n)$/)?.[1] ?? "";
         closingIndex = candidate;
         break;
       }
+      contentLines.push(containerContent ?? candidateLine);
       closingOffset += candidateLine.length;
     }
 
@@ -90,8 +97,11 @@ function findMermaidBlocks(markdown) {
       blocks.push({
         start,
         end,
+        prefix: opening.prefix,
         indent: opening.indent,
-        diagram: markdown.slice(contentStart, contentEnd),
+        diagram: contentLines
+          .map((contentLine) => deindent(contentLine, opening.indent.length))
+          .join(""),
         lineEnding,
       });
     }
@@ -107,14 +117,17 @@ function findMermaidBlocks(markdown) {
 }
 
 function parseOpeningFence(line) {
-  const match = line.match(/^( {0,3})(`{3,}|~{3,})([^\r\n]*)(?:\r?\n)?$/);
+  const { content, depth, prefix } = splitBlockQuote(line);
+  const match = content.match(
+    /^( {0,3})(`{3,}|~{3,})([^\r\n]*)(?:\r?\n)?$/,
+  );
   if (!match) return null;
 
   const [, indent, marker, rawInfo] = match;
   if (marker[0] === "`" && rawInfo.includes("`")) return null;
 
   const language = rawInfo.trim().split(/[ \t]/, 1)[0];
-  return { indent, marker, language };
+  return { indent, marker, language, prefix, quoteDepth: depth };
 }
 
 function isClosingFence(line, openingMarker) {
@@ -124,6 +137,39 @@ function isClosingFence(line, openingMarker) {
     match[1][0] === openingMarker[0] &&
     match[1].length >= openingMarker.length
   );
+}
+
+function splitBlockQuote(line) {
+  let content = line;
+  let prefix = "";
+  let depth = 0;
+
+  while (true) {
+    const match = content.match(/^( {0,3}>[ \t]?)/);
+    if (!match) break;
+    prefix += match[1];
+    content = content.slice(match[1].length);
+    depth += 1;
+  }
+
+  return { content, depth, prefix };
+}
+
+function stripBlockQuote(line, depth) {
+  let content = line;
+
+  for (let index = 0; index < depth; index += 1) {
+    const match = content.match(/^( {0,3}>[ \t]?)/);
+    if (!match) return null;
+    content = content.slice(match[1].length);
+  }
+
+  return content;
+}
+
+function deindent(line, width) {
+  if (width === 0) return line;
+  return line.replace(new RegExp(`^ {0,${width}}`), "");
 }
 
 function toMermaidArgs(options) {

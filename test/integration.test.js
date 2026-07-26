@@ -42,7 +42,7 @@ flowchart LR
     assert.equal(code, 0);
 
     const html = await readFile(output, "utf8");
-    assert.match(html, /data:image\/svg\+xml;base64/);
+    assert.match(html, /<img src="data:image\/svg\+xml;base64,/);
     assert.doesNotMatch(html, /```mermaid/);
   } finally {
     await rm(directory, { recursive: true, force: true });

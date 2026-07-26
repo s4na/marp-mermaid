@@ -31,6 +31,9 @@ jobs:
           PUPPETEER_CACHE_DIR: ${{ runner.temp }}/puppeteer
         run: npm ci
 
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+
       - name: Run checks
         env:
           PUPPETEER_CACHE_DIR: ${{ runner.temp }}/puppeteer

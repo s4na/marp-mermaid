@@ -100,3 +100,32 @@ test("requires Mermaid to be a complete info-string token", async () => {
     assert.equal(await transformMermaidBlocks(source), source);
   }
 });
+
+test("transforms Mermaid fences inside block quotes", async () => {
+  const source = "> ```mermaid\n> graph LR\n>   A --> B\n> ```";
+  const diagrams = [];
+  const result = await transformMermaidBlocks(source, {
+    render: async (diagram) => {
+      diagrams.push(diagram);
+      return "<svg />";
+    },
+  });
+
+  assert.deepEqual(diagrams, ["graph LR\n  A --> B"]);
+  assert.match(result, /^> !\[Mermaid diagram\]/);
+});
+
+test("removes opening-fence indentation from every content line", async () => {
+  const source = "  ```mermaid\n  ---\n  title: Example\n  ---\n  graph LR\n    A --> B\n  ```";
+  const diagrams = [];
+  await transformMermaidBlocks(source, {
+    render: async (diagram) => {
+      diagrams.push(diagram);
+      return "<svg />";
+    },
+  });
+
+  assert.deepEqual(diagrams, [
+    "---\ntitle: Example\n---\ngraph LR\n  A --> B",
+  ]);
+});
