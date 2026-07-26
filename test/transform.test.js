@@ -64,3 +64,39 @@ test("preserves indentation around an indented fence", async () => {
 
   assert.match(result, /^  !\[Mermaid diagram\]/);
 });
+
+test("does not transform Mermaid examples inside an outer fence", async () => {
+  const source = `\`\`\`\`markdown
+\`\`\`mermaid
+graph LR
+  A --> B
+\`\`\`
+\`\`\`\``;
+
+  assert.equal(await transformMermaidBlocks(source), source);
+});
+
+test("accepts a closing fence longer than its opening fence", async () => {
+  const source = "```mermaid\ngraph LR\n  A --> B\n````";
+  const result = await transformMermaidBlocks(source, {
+    render: async () => "<svg />",
+  });
+
+  assert.match(result, /^!\[Mermaid diagram\]/);
+});
+
+test("transforms Mermaid blocks in CRLF documents", async () => {
+  const source = "```mermaid\r\ngraph LR\r\n  A --> B\r\n```\r\n";
+  const result = await transformMermaidBlocks(source, {
+    render: async () => "<svg />",
+  });
+
+  assert.match(result, /^!\[Mermaid diagram\].*\r\n$/);
+});
+
+test("requires Mermaid to be a complete info-string token", async () => {
+  for (const language of ["mermaids", "mermaid-example"]) {
+    const source = `\`\`\`${language}\nnot a diagram\n\`\`\``;
+    assert.equal(await transformMermaidBlocks(source), source);
+  }
+});

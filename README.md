@@ -71,7 +71,7 @@ const markdown = await transformMermaidBlocks(source, {
 
 ## Requirements
 
-- Node.js 20 or later
+- Node.js 22.12 or later
 
 ## License
 
