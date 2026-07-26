@@ -56,7 +56,11 @@ export function normalizeMarpArgs(args, cwd = process.cwd()) {
 
   for (let index = 0; index < normalized.length; index += 1) {
     const argument = normalized[index];
-    const [flag, inlineValue] = argument.split("=", 2);
+    const separatorIndex = argument.indexOf("=");
+    const flag =
+      separatorIndex === -1 ? argument : argument.slice(0, separatorIndex);
+    const inlineValue =
+      separatorIndex === -1 ? undefined : argument.slice(separatorIndex + 1);
 
     if (PATH_OPTIONS.has(flag) && inlineValue !== undefined) {
       normalized[index] = `${flag}=${resolve(cwd, inlineValue)}`;

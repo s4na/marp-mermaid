@@ -28,6 +28,7 @@ test("resolves file-valued Marp options against the caller directory", () => {
         "--theme",
         "gaia",
         "--config=marp.config.js",
+        "--output=build/deck=v2.html",
       ],
       "/project",
     ),
@@ -39,6 +40,7 @@ test("resolves file-valued Marp options against the caller directory", () => {
       "--theme",
       "gaia",
       "--config=/project/marp.config.js",
+      "--output=/project/build/deck=v2.html",
     ],
   );
 });
