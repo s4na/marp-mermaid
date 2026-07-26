@@ -129,3 +129,28 @@ test("removes opening-fence indentation from every content line", async () => {
     "---\ntitle: Example\n---\ngraph LR\n  A --> B",
   ]);
 });
+
+test("stops an unclosed quoted fence when the block quote ends", async () => {
+  const source = "> ```mermaid\n> graph LR\n>   A --> B\n\nOutside";
+  const diagrams = [];
+  const result = await transformMermaidBlocks(source, {
+    render: async (diagram) => {
+      diagrams.push(diagram);
+      return "<svg />";
+    },
+  });
+
+  assert.deepEqual(diagrams, ["graph LR\n  A --> B"]);
+  assert.match(result, /\nOutside$/);
+});
+
+test("transforms Mermaid fences following list markers", async () => {
+  for (const marker of ["-", "1."]) {
+    const source = `${marker} \`\`\`mermaid\n   graph LR\n     A --> B\n   \`\`\``;
+    const result = await transformMermaidBlocks(source, {
+      render: async () => "<svg />",
+    });
+
+    assert.match(result, new RegExp(`^${marker.replace(".", "\\.")} !\\[`));
+  }
+});

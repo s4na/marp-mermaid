@@ -1,3 +1,5 @@
+import { resolve } from "node:path";
+
 const MERMAID_OPTIONS = new Map([
   ["--theme", "theme"],
   ["--backgroundColor", "backgroundColor"],
@@ -37,4 +39,50 @@ export function parseArguments(args) {
   }
 
   return { input, marpArgs, mermaidOptions };
+}
+
+const PATH_OPTIONS = new Set([
+  "--output",
+  "-o",
+  "--config-file",
+  "--config",
+  "-c",
+  "--theme-set",
+  "--browser-path",
+]);
+
+export function normalizeMarpArgs(args, cwd = process.cwd()) {
+  const normalized = [...args];
+
+  for (let index = 0; index < normalized.length; index += 1) {
+    const argument = normalized[index];
+    const [flag, inlineValue] = argument.split("=", 2);
+
+    if (PATH_OPTIONS.has(flag) && inlineValue !== undefined) {
+      normalized[index] = `${flag}=${resolve(cwd, inlineValue)}`;
+      continue;
+    }
+
+    if (flag === "--theme" && inlineValue !== undefined) {
+      normalized[index] = `${flag}=${resolveTheme(inlineValue, cwd)}`;
+      continue;
+    }
+
+    if (
+      index < normalized.length - 1 &&
+      (PATH_OPTIONS.has(argument) || argument === "--theme")
+    ) {
+      normalized[index + 1] =
+        argument === "--theme"
+          ? resolveTheme(normalized[index + 1], cwd)
+          : resolve(cwd, normalized[index + 1]);
+      index += 1;
+    }
+  }
+
+  return normalized;
+}
+
+function resolveTheme(value, cwd) {
+  return /[/\\]|\.css$/i.test(value) ? resolve(cwd, value) : value;
 }

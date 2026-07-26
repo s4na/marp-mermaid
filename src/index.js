@@ -3,8 +3,10 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
+import MarkdownIt from "markdown-it";
 
 const require = createRequire(import.meta.url);
+const markdownIt = new MarkdownIt();
 
 export async function renderMermaid(diagram, options = {}) {
   const directory = await mkdtemp(join(tmpdir(), "marp-mermaid-"));
@@ -54,122 +56,34 @@ export async function transformMermaidBlocks(markdown, options = {}) {
 
 function findMermaidBlocks(markdown) {
   const lines = markdown.match(/[^\r\n]*(?:\r\n|\n|$)/g).filter(Boolean);
-  const blocks = [];
-  let offset = 0;
+  const offsets = [0];
+  for (const line of lines) offsets.push(offsets.at(-1) + line.length);
 
-  for (let index = 0; index < lines.length; index += 1) {
-    const line = lines[index];
-    const opening = parseOpeningFence(line);
+  return markdownIt
+    .parse(markdown, {})
+    .filter(
+      (token) =>
+        token.type === "fence" &&
+        token.info.trim().split(/[ \t]/, 1)[0] === "mermaid" &&
+        token.map,
+    )
+    .map((token) => {
+      const [startLine, endLine] = token.map;
+      const openingLine = lines[startLine] ?? "";
+      const markerIndex = openingLine.indexOf(token.markup);
+      const prefix =
+        markerIndex === -1 ? "" : openingLine.slice(0, markerIndex);
+      const finalLine = lines[endLine - 1] ?? "";
 
-    if (!opening) {
-      offset += line.length;
-      continue;
-    }
-
-    const start = offset;
-    const contentStart = start + line.length;
-    let end = markdown.length;
-    let lineEnding = "";
-    let closingIndex = lines.length;
-    let closingOffset = contentStart;
-    const contentLines = [];
-
-    for (let candidate = index + 1; candidate < lines.length; candidate += 1) {
-      const candidateLine = lines[candidate];
-      const containerContent = stripBlockQuote(
-        candidateLine,
-        opening.quoteDepth,
-      );
-      if (
-        containerContent !== null &&
-        isClosingFence(containerContent, opening.marker)
-      ) {
-        end = closingOffset + candidateLine.length;
-        lineEnding = candidateLine.match(/(\r\n|\n)$/)?.[1] ?? "";
-        closingIndex = candidate;
-        break;
-      }
-      contentLines.push(containerContent ?? candidateLine);
-      closingOffset += candidateLine.length;
-    }
-
-    if (opening.language === "mermaid") {
-      blocks.push({
-        start,
-        end,
-        prefix: opening.prefix,
-        indent: opening.indent,
-        diagram: contentLines
-          .map((contentLine) => deindent(contentLine, opening.indent.length))
-          .join(""),
-        lineEnding,
-      });
-    }
-
-    const lastSkipped = Math.min(closingIndex, lines.length - 1);
-    for (let skipped = index; skipped <= lastSkipped; skipped += 1) {
-      offset += lines[skipped].length;
-    }
-    index = closingIndex;
-  }
-
-  return blocks;
-}
-
-function parseOpeningFence(line) {
-  const { content, depth, prefix } = splitBlockQuote(line);
-  const match = content.match(
-    /^( {0,3})(`{3,}|~{3,})([^\r\n]*)(?:\r?\n)?$/,
-  );
-  if (!match) return null;
-
-  const [, indent, marker, rawInfo] = match;
-  if (marker[0] === "`" && rawInfo.includes("`")) return null;
-
-  const language = rawInfo.trim().split(/[ \t]/, 1)[0];
-  return { indent, marker, language, prefix, quoteDepth: depth };
-}
-
-function isClosingFence(line, openingMarker) {
-  const match = line.match(/^ {0,3}(`{3,}|~{3,})[ \t]*(?:\r?\n)?$/);
-  return (
-    match !== null &&
-    match[1][0] === openingMarker[0] &&
-    match[1].length >= openingMarker.length
-  );
-}
-
-function splitBlockQuote(line) {
-  let content = line;
-  let prefix = "";
-  let depth = 0;
-
-  while (true) {
-    const match = content.match(/^( {0,3}>[ \t]?)/);
-    if (!match) break;
-    prefix += match[1];
-    content = content.slice(match[1].length);
-    depth += 1;
-  }
-
-  return { content, depth, prefix };
-}
-
-function stripBlockQuote(line, depth) {
-  let content = line;
-
-  for (let index = 0; index < depth; index += 1) {
-    const match = content.match(/^( {0,3}>[ \t]?)/);
-    if (!match) return null;
-    content = content.slice(match[1].length);
-  }
-
-  return content;
-}
-
-function deindent(line, width) {
-  if (width === 0) return line;
-  return line.replace(new RegExp(`^ {0,${width}}`), "");
+      return {
+        start: offsets[startLine],
+        end: offsets[endLine] ?? markdown.length,
+        prefix,
+        indent: "",
+        diagram: token.content,
+        lineEnding: finalLine.match(/(\r\n|\n)$/)?.[1] ?? "",
+      };
+    });
 }
 
 function toMermaidArgs(options) {

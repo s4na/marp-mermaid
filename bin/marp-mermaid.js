@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
 import { transformMermaidBlocks } from "../src/index.js";
-import { parseArguments } from "../src/arguments.js";
+import { normalizeMarpArgs, parseArguments } from "../src/arguments.js";
 
 const require = createRequire(import.meta.url);
 
@@ -31,17 +31,6 @@ function resolveMarpCli() {
   return join(dirname(packagePath), "marp-cli.js");
 }
 
-function normalizeMarpArgs(args) {
-  const normalized = [...args];
-  for (let index = 0; index < normalized.length - 1; index += 1) {
-    if (normalized[index] === "--output" || normalized[index] === "-o") {
-      normalized[index + 1] = resolve(normalized[index + 1]);
-      index += 1;
-    }
-  }
-  return normalized;
-}
-
 function run(command, args, input, cwd) {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
@@ -50,6 +39,9 @@ function run(command, args, input, cwd) {
     });
     child.once("error", reject);
     child.once("exit", (code) => resolve(code ?? 1));
+    child.stdin.on("error", (error) => {
+      if (error.code !== "EPIPE") reject(error);
+    });
     child.stdin.end(input);
   });
 }
