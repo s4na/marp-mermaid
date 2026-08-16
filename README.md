@@ -57,6 +57,10 @@ Custom Marp engines are not supported. `marp-mermaid` supplies its own small
 engine customization so Marp accepts embedded SVG data URLs. Passing `--engine`
 fails explicitly; an `engine` setting in a Marp configuration file is overridden.
 
+Interactive Marp modes (`--watch`, `--server`, and `--preview`, including their
+short aliases) are not supported because Mermaid transformation is a one-shot
+build step. These options fail explicitly instead of watching stale input.
+
 ## JavaScript API
 
 ```js

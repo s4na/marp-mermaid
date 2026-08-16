@@ -6,14 +6,12 @@ import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
 import { transformMermaidBlocks } from "../src/index.js";
-import { normalizeMarpArgs, parseArguments } from "../src/arguments.js";
+import { normalizeMarpArgs, parseArguments, validateMarpArgs } from "../src/arguments.js";
 
 const require = createRequire(import.meta.url);
 const { input, marpArgs, mermaidOptions } = parseArguments(process.argv.slice(2));
 
-if (marpArgs.some((argument) => argument === "--engine" || argument.startsWith("--engine="))) {
-  throw new Error("Custom Marp engines are not supported by marp-mermaid");
-}
+validateMarpArgs(marpArgs);
 
 const inputPath = resolve(input);
 const source = await readFile(inputPath, "utf8");

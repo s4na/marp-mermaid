@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { normalizeMarpArgs, parseArguments } from "../src/arguments.js";
+import { normalizeMarpArgs, parseArguments, validateMarpArgs } from "../src/arguments.js";
 
 test("passes shared option names after the input to Marp", () => {
   assert.deepEqual(parseArguments(["--theme", "dark", "slides.md", "--theme", "custom.css"]), {
@@ -40,4 +40,11 @@ test("resolves every variadic theme-set path", () => {
     normalizeMarpArgs(["--theme-set", "themes/a.css", "themes/b.css", "--pdf"], "/project"),
     ["--theme-set", "/project/themes/a.css", "/project/themes/b.css", "--pdf"],
   );
+});
+
+test("rejects Marp modes that require a persistent input", () => {
+  for (const option of ["--watch", "-w", "--server", "-s", "--preview", "-p", "--engine=custom.js"]) {
+    assert.throws(() => validateMarpArgs([option]), /not supported/);
+  }
+  assert.doesNotThrow(() => validateMarpArgs(["--pdf", "--output", "slides.pdf"]));
 });

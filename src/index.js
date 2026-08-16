@@ -37,11 +37,13 @@ export async function transformMermaidBlocks(markdown, options = {}) {
   let result = "";
   let cursor = 0;
   for (const block of blocks) {
-    result += markdown.slice(cursor, block.start);
+    const preceding = markdown.slice(cursor, block.start);
+    result += preceding;
     const svg = await render(block.diagram.trim(), options);
     const encoded = Buffer.from(svg).toString("base64");
+    const leadingBoundary = paragraphBoundaryBefore(block, preceding);
     const boundary = containerBoundary(block, markdown.slice(block.end));
-    result += `${block.prefix}![Mermaid diagram](data:image/svg+xml;base64,${encoded})${block.lineEnding}${boundary}`;
+    result += `${leadingBoundary}${block.prefix}![Mermaid diagram](data:image/svg+xml;base64,${encoded})${block.lineEnding}${boundary}`;
     cursor = block.end;
   }
   return result + markdown.slice(cursor);
@@ -89,12 +91,20 @@ function findFrontMatterEnd(lines, offsets) {
 }
 
 function containerBoundary(block, remainder) {
-  if (!/\S/.test(block.prefix) || !block.lineEnding) return "";
+  if (!block.lineEnding || !remainder || /^[\t ]*(?:\r\n|\r|\n)/.test(remainder)) return "";
+  if (!/\S/.test(block.prefix)) return block.lineEnding;
   if (block.prefix.includes(">") && /^[\t ]*>/.test(remainder)) {
     const quotePrefix = block.prefix.match(/^(?:[\t ]*>[\t ]?)+/)?.[0] ?? ">";
     return `${quotePrefix.trimEnd()}${block.lineEnding}`;
   }
   return block.lineEnding;
+}
+
+function paragraphBoundaryBefore(block, preceding) {
+  if (/\S/.test(block.prefix) || !preceding) return "";
+  const lineEnding = preceding.match(/(\r\n|\r|\n)$/)?.[1];
+  if (!lineEnding) return "";
+  return /(?:\r\n|\r|\n)[\t ]*(?:\r\n|\r|\n)$/.test(preceding) ? "" : lineEnding;
 }
 
 function toMermaidArgs(options) {

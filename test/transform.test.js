@@ -58,6 +58,13 @@ test("keeps following quoted content in the same block quote", async () => {
   assert.match(result, /data:image\/svg\+xml;base64,[^)]+\)\n>\n> Caption$/);
 });
 
+test("preserves paragraph boundaries around a top-level replacement", async () => {
+  const source = "Before\n```mermaid\ngraph LR\n A --> B\n```\nAfter";
+  const result = await transformMermaidBlocks(source, renderer);
+  assert.match(result, /^Before\n\n!\[Mermaid diagram\]/);
+  assert.match(result, /\)\n\nAfter$/);
+});
+
 test("removes opening-fence indentation and container markers from diagrams", async () => {
   const diagrams = [];
   await transformMermaidBlocks("  ```mermaid\n  graph LR\n    A --> B\n  ```", {

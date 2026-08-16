@@ -29,6 +29,17 @@ export function parseArguments(args) {
   return { input, marpArgs, mermaidOptions };
 }
 
+const UNSUPPORTED_MARP_OPTIONS = new Set([
+  "--engine", "--watch", "-w", "--server", "-s", "--preview", "-p",
+]);
+
+export function validateMarpArgs(args) {
+  const unsupported = args.find((argument) =>
+    UNSUPPORTED_MARP_OPTIONS.has(argument.split("=", 1)[0]),
+  );
+  if (unsupported) throw new Error(`${unsupported} is not supported by marp-mermaid`);
+}
+
 const PATH_OPTIONS = new Set([
   "--output", "-o", "--config-file", "--config", "-c", "--browser-path",
 ]);
