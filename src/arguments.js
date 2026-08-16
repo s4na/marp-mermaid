@@ -1,0 +1,90 @@
+import { resolve } from "node:path";
+
+const MERMAID_OPTIONS = new Map([
+  ["--theme", "theme"], ["--backgroundColor", "backgroundColor"],
+  ["--configFile", "configFile"], ["--cssFile", "cssFile"],
+  ["--puppeteerConfigFile", "puppeteerConfigFile"], ["--scale", "scale"],
+  ["--width", "width"], ["--height", "height"],
+]);
+
+export function parseArguments(args) {
+  const marpArgs = [];
+  const mermaidOptions = {};
+  let input;
+  for (let index = 0; index < args.length; index += 1) {
+    const argument = args[index];
+    const separatorIndex = argument.indexOf("=");
+    const flag = separatorIndex === -1 ? argument : argument.slice(0, separatorIndex);
+    const attachedValue = separatorIndex === -1 ? undefined : argument.slice(separatorIndex + 1);
+    const option = input ? undefined : MERMAID_OPTIONS.get(flag);
+    if (option) {
+      const value = attachedValue ?? args[index + 1];
+      if (value === undefined) throw new Error(`${argument} requires a value`);
+      mermaidOptions[option] = value;
+      if (attachedValue === undefined) index += 1;
+    } else if (!input && !argument.startsWith("-")) input = argument;
+    else marpArgs.push(argument);
+  }
+  if (!input) throw new Error("Usage: marp-mermaid [Mermaid options] <input.md> [Marp options]");
+  return { input, marpArgs, mermaidOptions };
+}
+
+const UNSUPPORTED_MARP_OPTIONS = new Set([
+  "--engine", "--watch", "-w", "--server", "-s", "--preview", "-p",
+]);
+
+export function validateMarpArgs(args) {
+  const unsupported = args.find((argument) =>
+    UNSUPPORTED_MARP_OPTIONS.has(argument.split("=", 1)[0]),
+  );
+  if (unsupported) throw new Error(`${unsupported} is not supported by marp-mermaid`);
+}
+
+export function ensureMarpOutput(args, inputPath) {
+  if (args.some((argument) => ["--output", "-o"].includes(argument.split("=", 1)[0]))) return args;
+  const extension = args.includes("--pdf") ? ".pdf" : args.includes("--pptx") ? ".pptx" : ".html";
+  return [...args, "--output", inputPath.replace(/\.[^./\\]+$/, "") + extension];
+}
+
+const PATH_OPTIONS = new Set([
+  "--output", "-o", "--config-file", "--config", "-c", "--browser-path",
+]);
+
+export function normalizeMarpArgs(args, cwd = process.cwd()) {
+  const normalized = [...args];
+  for (let index = 0; index < normalized.length; index += 1) {
+    const argument = normalized[index];
+    const separatorIndex = argument.indexOf("=");
+    const flag = separatorIndex === -1 ? argument : argument.slice(0, separatorIndex);
+    const inlineValue = separatorIndex === -1 ? undefined : argument.slice(separatorIndex + 1);
+    if (flag === "--theme-set") {
+      if (inlineValue !== undefined) normalized[index] = `${flag}=${resolve(cwd, inlineValue)}`;
+      let valueIndex = index + 1;
+      while (valueIndex < normalized.length && !normalized[valueIndex].startsWith("-")) {
+        normalized[valueIndex] = resolve(cwd, normalized[valueIndex]);
+        valueIndex += 1;
+      }
+      index = valueIndex - 1;
+      continue;
+    }
+    if (PATH_OPTIONS.has(flag) && inlineValue !== undefined) {
+      normalized[index] = `${flag}=${resolve(cwd, inlineValue)}`;
+      continue;
+    }
+    if (flag === "--theme" && inlineValue !== undefined) {
+      normalized[index] = `${flag}=${resolveTheme(inlineValue, cwd)}`;
+      continue;
+    }
+    if (index < normalized.length - 1 && (PATH_OPTIONS.has(argument) || argument === "--theme")) {
+      normalized[index + 1] = argument === "--theme"
+        ? resolveTheme(normalized[index + 1], cwd)
+        : resolve(cwd, normalized[index + 1]);
+      index += 1;
+    }
+  }
+  return normalized;
+}
+
+function resolveTheme(value, cwd) {
+  return /[/\\]|\.css$/i.test(value) ? resolve(cwd, value) : value;
+}

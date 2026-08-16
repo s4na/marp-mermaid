@@ -1,0 +1,35 @@
+{
+  "name": "marp-mermaid",
+  "version": "0.1.0",
+  "description": "Render Mermaid code blocks as SVG diagrams in Marp presentations",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/s4na/marp-mermaid.git"
+  },
+  "keywords": ["marp", "mermaid", "markdown", "slides", "svg"],
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "exports": "./src/index.js",
+  "bin": {
+    "marp-mermaid": "./bin/marp-mermaid.js"
+  },
+  "files": ["bin", "src", "LICENSE", "README.md"],
+  "scripts": {
+    "test": "node --test test/arguments.test.js test/transform.test.js",
+    "test:integration": "node --test test/integration.test.js",
+    "check": "npm test && npm run test:integration && npm pack --dry-run"
+  },
+  "dependencies": {
+    "@marp-team/marp-cli": "^4.5.0",
+    "@mermaid-js/mermaid-cli": "^11.16.0",
+    "markdown-it": "^14.3.0"
+  },
+  "overrides": {
+    "@marp-team/marp-cli": {
+      "puppeteer-core": "^25.3.0"
+    }
+  }
+}
