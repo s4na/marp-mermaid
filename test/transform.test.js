@@ -22,6 +22,13 @@ test("supports multiple blocks, tilde fences, CRLF, and longer closing fences", 
   assert.match(result, /\r\n$/);
 });
 
+test("keeps token offsets aligned for lone-CR documents", async () => {
+  const source = "# Slide\r\r```mermaid\rgraph LR\r A --> B\r```\r\rAfter";
+  const result = await transformMermaidBlocks(source, renderer);
+  assert.match(result, /^# Slide\r\r!\[Mermaid diagram\]/);
+  assert.match(result, /\r\rAfter$/);
+});
+
 test("leaves non-Mermaid blocks and nested examples unchanged", async () => {
   for (const source of [
     "```js\nconsole.log('hello');\n```",
@@ -43,6 +50,12 @@ test("preserves a boundary after a Mermaid fence in a container", async () => {
     const result = await transformMermaidBlocks(source, renderer);
     assert.match(result, /data:image\/svg\+xml;base64,[^)]+\)\n\nOutside$/);
   }
+});
+
+test("keeps following quoted content in the same block quote", async () => {
+  const source = "> ```mermaid\n> graph LR\n>   A --> B\n> ```\n> Caption";
+  const result = await transformMermaidBlocks(source, renderer);
+  assert.match(result, /data:image\/svg\+xml;base64,[^)]+\)\n>\n> Caption$/);
 });
 
 test("removes opening-fence indentation and container markers from diagrams", async () => {

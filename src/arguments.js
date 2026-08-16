@@ -13,12 +13,15 @@ export function parseArguments(args) {
   let input;
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index];
-    const option = input ? undefined : MERMAID_OPTIONS.get(argument);
+    const separatorIndex = argument.indexOf("=");
+    const flag = separatorIndex === -1 ? argument : argument.slice(0, separatorIndex);
+    const attachedValue = separatorIndex === -1 ? undefined : argument.slice(separatorIndex + 1);
+    const option = input ? undefined : MERMAID_OPTIONS.get(flag);
     if (option) {
-      const value = args[index + 1];
+      const value = attachedValue ?? args[index + 1];
       if (value === undefined) throw new Error(`${argument} requires a value`);
       mermaidOptions[option] = value;
-      index += 1;
+      if (attachedValue === undefined) index += 1;
     } else if (!input && !argument.startsWith("-")) input = argument;
     else marpArgs.push(argument);
   }
@@ -27,7 +30,7 @@ export function parseArguments(args) {
 }
 
 const PATH_OPTIONS = new Set([
-  "--output", "-o", "--config-file", "--config", "-c", "--theme-set", "--browser-path",
+  "--output", "-o", "--config-file", "--config", "-c", "--browser-path",
 ]);
 
 export function normalizeMarpArgs(args, cwd = process.cwd()) {
@@ -37,6 +40,16 @@ export function normalizeMarpArgs(args, cwd = process.cwd()) {
     const separatorIndex = argument.indexOf("=");
     const flag = separatorIndex === -1 ? argument : argument.slice(0, separatorIndex);
     const inlineValue = separatorIndex === -1 ? undefined : argument.slice(separatorIndex + 1);
+    if (flag === "--theme-set") {
+      if (inlineValue !== undefined) normalized[index] = `${flag}=${resolve(cwd, inlineValue)}`;
+      let valueIndex = index + 1;
+      while (valueIndex < normalized.length && !normalized[valueIndex].startsWith("-")) {
+        normalized[valueIndex] = resolve(cwd, normalized[valueIndex]);
+        valueIndex += 1;
+      }
+      index = valueIndex - 1;
+      continue;
+    }
     if (PATH_OPTIONS.has(flag) && inlineValue !== undefined) {
       normalized[index] = `${flag}=${resolve(cwd, inlineValue)}`;
       continue;

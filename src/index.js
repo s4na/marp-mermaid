@@ -40,7 +40,7 @@ export async function transformMermaidBlocks(markdown, options = {}) {
     result += markdown.slice(cursor, block.start);
     const svg = await render(block.diagram.trim(), options);
     const encoded = Buffer.from(svg).toString("base64");
-    const boundary = /\S/.test(block.prefix) ? block.lineEnding : "";
+    const boundary = containerBoundary(block, markdown.slice(block.end));
     result += `${block.prefix}![Mermaid diagram](data:image/svg+xml;base64,${encoded})${block.lineEnding}${boundary}`;
     cursor = block.end;
   }
@@ -48,7 +48,7 @@ export async function transformMermaidBlocks(markdown, options = {}) {
 }
 
 function findMermaidBlocks(markdown) {
-  const lines = markdown.match(/[^\r\n]*(?:\r\n|\n|$)/g).filter(Boolean);
+  const lines = markdown.match(/[^\r\n]*(?:\r\n|\r|\n|$)/g).filter(Boolean);
   const offsets = [0];
   for (const line of lines) offsets.push(offsets.at(-1) + line.length);
   const frontMatterEnd = findFrontMatterEnd(lines, offsets);
@@ -73,19 +73,28 @@ function findMermaidBlocks(markdown) {
         end: offsets[endLine] ?? markdown.length,
         prefix,
         diagram: token.content,
-        lineEnding: finalLine.match(/(\r\n|\n)$/)?.[1] ?? "",
+        lineEnding: finalLine.match(/(\r\n|\r|\n)$/)?.[1] ?? "",
       };
     });
 }
 
 function findFrontMatterEnd(lines, offsets) {
-  if (!/^\ufeff?---[\t ]*(?:\r?\n|$)$/.test(lines[0] ?? "")) return 0;
+  if (!/^\ufeff?---[\t ]*(?:\r\n|\r|\n|$)$/.test(lines[0] ?? "")) return 0;
   for (let index = 1; index < lines.length; index += 1) {
-    if (/^(?:---|\.\.\.)[\t ]*(?:\r?\n|$)$/.test(lines[index])) {
+    if (/^(?:---|\.\.\.)[\t ]*(?:\r\n|\r|\n|$)$/.test(lines[index])) {
       return offsets[index + 1];
     }
   }
   return 0;
+}
+
+function containerBoundary(block, remainder) {
+  if (!/\S/.test(block.prefix) || !block.lineEnding) return "";
+  if (block.prefix.includes(">") && /^[\t ]*>/.test(remainder)) {
+    const quotePrefix = block.prefix.match(/^(?:[\t ]*>[\t ]?)+/)?.[0] ?? ">";
+    return `${quotePrefix.trimEnd()}${block.lineEnding}`;
+  }
+  return block.lineEnding;
 }
 
 function toMermaidArgs(options) {
