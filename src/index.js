@@ -94,17 +94,23 @@ function containerBoundary(block, remainder) {
   if (!block.lineEnding || !remainder || /^[\t ]*(?:\r\n|\r|\n)/.test(remainder)) return "";
   if (!/\S/.test(block.prefix)) return block.lineEnding;
   if (block.prefix.includes(">") && /^[\t ]*>/.test(remainder)) {
-    const quotePrefix = block.prefix.match(/^(?:[\t ]*>[\t ]?)+/)?.[0] ?? ">";
+    const quotePrefix = remainder.match(/^(?:[\t ]*>[\t ]?)+/)?.[0] ?? ">";
     return `${quotePrefix.trimEnd()}${block.lineEnding}`;
   }
+  if (/^(?:[\t ]*)(?:[-+*]|\d+[.)])[\t ]/.test(remainder)) return "";
   return block.lineEnding;
 }
 
 function paragraphBoundaryBefore(block, preceding) {
-  if (/\S/.test(block.prefix) || !preceding) return "";
+  if (!preceding) return "";
   const lineEnding = preceding.match(/(\r\n|\r|\n)$/)?.[1];
   if (!lineEnding) return "";
-  return /(?:\r\n|\r|\n)[\t ]*(?:\r\n|\r|\n)$/.test(preceding) ? "" : lineEnding;
+  if (/(?:\r\n|\r|\n)[\t ]*(?:\r\n|\r|\n)$/.test(preceding)) return "";
+  if (block.prefix.includes(">")) {
+    const quotePrefix = block.prefix.match(/(?:^|[-+*]\s|\d+[.)]\s)((?:[\t ]*>[\t ]?)+)/)?.[1] ?? ">";
+    return `${quotePrefix.trimEnd()}${lineEnding}`;
+  }
+  return /\S/.test(block.prefix) ? "" : lineEnding;
 }
 
 function toMermaidArgs(options) {

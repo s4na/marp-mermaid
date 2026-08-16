@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { normalizeMarpArgs, parseArguments, validateMarpArgs } from "../src/arguments.js";
+import { ensureMarpOutput, normalizeMarpArgs, parseArguments, validateMarpArgs } from "../src/arguments.js";
 
 test("passes shared option names after the input to Marp", () => {
   assert.deepEqual(parseArguments(["--theme", "dark", "slides.md", "--theme", "custom.css"]), {
@@ -47,4 +47,10 @@ test("rejects Marp modes that require a persistent input", () => {
     assert.throws(() => validateMarpArgs([option]), /not supported/);
   }
   assert.doesNotThrow(() => validateMarpArgs(["--pdf", "--output", "slides.pdf"]));
+});
+
+test("derives the default output beside the input", () => {
+  assert.deepEqual(ensureMarpOutput(["--pdf"], "/project/slides.md"), ["--pdf", "--output", "/project/slides.pdf"]);
+  assert.deepEqual(ensureMarpOutput([], "/project/slides.md"), ["--output", "/project/slides.html"]);
+  assert.deepEqual(ensureMarpOutput(["-o", "/tmp/out.pdf"], "/project/slides.md"), ["-o", "/tmp/out.pdf"]);
 });

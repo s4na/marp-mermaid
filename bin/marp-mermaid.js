@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
 import { transformMermaidBlocks } from "../src/index.js";
-import { normalizeMarpArgs, parseArguments, validateMarpArgs } from "../src/arguments.js";
+import { ensureMarpOutput, normalizeMarpArgs, parseArguments, validateMarpArgs } from "../src/arguments.js";
 
 const require = createRequire(import.meta.url);
 const { input, marpArgs, mermaidOptions } = parseArguments(process.argv.slice(2));
@@ -20,7 +20,7 @@ process.exitCode = await run(
   process.execPath,
   [
     resolveMarpCli(),
-    ...normalizeMarpArgs(marpArgs),
+    ...ensureMarpOutput(normalizeMarpArgs(marpArgs), inputPath),
     "--engine",
     fileURLToPath(new URL("../src/engine.js", import.meta.url)),
   ],

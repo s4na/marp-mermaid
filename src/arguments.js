@@ -40,6 +40,12 @@ export function validateMarpArgs(args) {
   if (unsupported) throw new Error(`${unsupported} is not supported by marp-mermaid`);
 }
 
+export function ensureMarpOutput(args, inputPath) {
+  if (args.some((argument) => ["--output", "-o"].includes(argument.split("=", 1)[0]))) return args;
+  const extension = args.includes("--pdf") ? ".pdf" : args.includes("--pptx") ? ".pptx" : ".html";
+  return [...args, "--output", inputPath.replace(/\.[^./\\]+$/, "") + extension];
+}
+
 const PATH_OPTIONS = new Set([
   "--output", "-o", "--config-file", "--config", "-c", "--browser-path",
 ]);
