@@ -8,13 +8,7 @@
     "type": "git",
     "url": "git+https://github.com/s4na/marp-mermaid.git"
   },
-  "keywords": [
-    "marp",
-    "mermaid",
-    "markdown",
-    "slides",
-    "svg"
-  ],
+  "keywords": ["marp", "mermaid", "markdown", "slides", "svg"],
   "engines": {
     "node": ">=22.12.0"
   },
@@ -22,12 +16,7 @@
   "bin": {
     "marp-mermaid": "./bin/marp-mermaid.js"
   },
-  "files": [
-    "bin",
-    "src",
-    "LICENSE",
-    "README.md"
-  ],
+  "files": ["bin", "src", "LICENSE", "README.md"],
   "scripts": {
     "test": "node --test test/arguments.test.js test/transform.test.js",
     "test:integration": "node --test test/integration.test.js",
@@ -37,5 +26,10 @@
     "@marp-team/marp-cli": "^4.5.0",
     "@mermaid-js/mermaid-cli": "^11.16.0",
     "markdown-it": "^14.3.0"
+  },
+  "overrides": {
+    "@marp-team/marp-cli": {
+      "puppeteer-core": "^25.3.0"
+    }
   }
 }

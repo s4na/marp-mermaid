@@ -25,11 +25,12 @@ jobs:
         with:
           node-version: 24
           cache: npm
+          cache-dependency-path: package.json
 
       - name: Install dependencies
         env:
           PUPPETEER_CACHE_DIR: ${{ runner.temp }}/puppeteer
-        run: npm ci
+        run: npm install
 
       - name: Audit dependencies
         run: npm audit --audit-level=high
