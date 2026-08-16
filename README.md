@@ -42,8 +42,8 @@ Every Mermaid block is rendered before Marp runs and embedded as an SVG data
 URL. The diagram is therefore preserved in HTML, PDF, and PowerPoint output
 without client-side JavaScript.
 
-All arguments after the input file are passed to Marp CLI. Arguments before the
-input file are passed to Mermaid CLI:
+All supported arguments after the input file are passed to Marp CLI. Arguments
+before the input file are passed to Mermaid CLI:
 
 ```sh
 npx marp-mermaid --theme dark slides.md --output slides.html
@@ -52,6 +52,10 @@ npx marp-mermaid --theme dark slides.md --output slides.html
 Supported Mermaid options are `--theme`, `--backgroundColor`,
 `--configFile`, `--cssFile`, `--puppeteerConfigFile`, `--scale`, `--width`,
 and `--height`.
+
+Custom Marp engines are not supported. `marp-mermaid` supplies its own small
+engine customization so Marp accepts embedded SVG data URLs. Passing `--engine`
+fails explicitly; an `engine` setting in a Marp configuration file is overridden.
 
 ## JavaScript API
 

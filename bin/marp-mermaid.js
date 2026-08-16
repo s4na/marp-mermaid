@@ -9,8 +9,12 @@ import { transformMermaidBlocks } from "../src/index.js";
 import { normalizeMarpArgs, parseArguments } from "../src/arguments.js";
 
 const require = createRequire(import.meta.url);
-
 const { input, marpArgs, mermaidOptions } = parseArguments(process.argv.slice(2));
+
+if (marpArgs.some((argument) => argument === "--engine" || argument.startsWith("--engine="))) {
+  throw new Error("Custom Marp engines are not supported by marp-mermaid");
+}
+
 const inputPath = resolve(input);
 const source = await readFile(inputPath, "utf8");
 const transformed = await transformMermaidBlocks(source, mermaidOptions);
@@ -33,10 +37,7 @@ function resolveMarpCli() {
 
 function run(command, args, input, cwd) {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, {
-      cwd,
-      stdio: ["pipe", "inherit", "inherit"],
-    });
+    const child = spawn(command, args, { cwd, stdio: ["pipe", "inherit", "inherit"] });
     child.once("error", reject);
     child.once("exit", (code) => resolve(code ?? 1));
     child.stdin.on("error", (error) => {
